@@ -36,6 +36,8 @@
     ['touchmove', 'gesturestart', 'gesturechange', 'dblclick'].forEach(function (e) {
       document.addEventListener(e, function (ev) { ev.preventDefault(); }, { passive: false });
     });
+    // ask the browser to keep this page's storage (the save) instead of clearing it when space runs low or the page is not visited for a while
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () { });
     var canvas = document.querySelector('#unity-canvas');
     var buildUrl = 'Build';
     var config = {
@@ -57,8 +59,12 @@
     script.onload = function () {
       createUnityInstance(canvas, config, function (p) {
         document.querySelector('#fill').style.width = Math.round(p * 100) + '%';
-      }).then(function () {
+      }).then(function (unity) {
         document.querySelector('#load').style.display = 'none';
+        // save when the page is hidden (another app, tab closed, phone locked): the game writes its save then
+        var hidden = function () { try { unity.SendMessage('Mumindalen', 'WebHidden'); } catch (e) { } };
+        document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') hidden(); });
+        window.addEventListener('pagehide', hidden);
       }).catch(function (m) {
         document.querySelector('#msg').textContent = 'Demot kunde inte starta: ' + m;
       });
