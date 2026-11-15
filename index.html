@@ -54,13 +54,23 @@
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
       showBanner: function (msg, type) { if (type === 'error') document.querySelector('#msg').textContent = 'Fel: ' + msg; console.log(msg); }
     };
+    // After the download the game compiles its shaders (WebWarm.cs) while this screen is still up, so that a level does not
+    // stop for a moment each time something new comes on screen; the bar shows how far it has come.
+    var started = false, warmed = false, warming = false;
+    var showGame = function () { if (started && warmed) document.querySelector('#load').style.display = 'none'; };
+    window.mdWarm = function (done) {
+      if (!warming) { warming = true; document.querySelector('#msg').textContent = 'Förbereder grafiken…'; }
+      document.querySelector('#fill').style.width = Math.round(done * 100) + '%';
+      if (done >= 1) { warmed = true; showGame(); }
+    };
     var script = document.createElement('script');
     script.src = buildUrl + '/WebDemo.loader.js';
     script.onload = function () {
       createUnityInstance(canvas, config, function (p) {
-        document.querySelector('#fill').style.width = Math.round(p * 100) + '%';
+        if (!warming) document.querySelector('#fill').style.width = Math.round(p * 100) + '%';
       }).then(function (unity) {
-        document.querySelector('#load').style.display = 'none';
+        started = true; showGame();
+        setTimeout(function () { warmed = true; showGame(); }, 60000); // never left behind the loading screen
         // save when the page is hidden (another app, tab closed, phone locked): the game writes its save then
         var hidden = function () { try { unity.SendMessage('Mumindalen', 'WebHidden'); } catch (e) { } };
         document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') hidden(); });
